@@ -1,13 +1,52 @@
 import React, { useEffect, useRef, useReducer } from "react";
 
+// Style
+import styled from "styled-components";
+import { IoIosPlay, IoIosPause } from "react-icons/io";
+
+// 18 = 2px border + 8 + 8 padding
+const Container = styled.div`
+  border: 1px solid black;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  height: calc(100vh - 18px);
+`;
+
+const StyledCanvas = styled.canvas`
+  border: 1px solid black;
+`;
+
+const ControlBar = styled.div`
+    height: 24,
+    display: "flex",
+    width: "100%",
+    justifyContent: "space-around",
+    alignItems: "center"
+`;
+
+const StyledPauseIcon = styled(IoIosPause)`
+  color: black;
+  cursor: pointer;
+  font-size: 28px;
+`;
+
+const StyledPlayIcon = styled(IoIosPlay)`
+  color: black;
+  cursor: pointer;
+  font-size: 28px;
+`;
+
 // TODO:
-// - make this a github repo
+// ** make this a github repo **
 // - move logic into separate files
 // - ability to resize
-// - play/pause (reset? change frame rate?)
+// - ** play/pause **
+// - (reset? change frame rate?)
 
 const heightWidth = 600;
-const verticalLines = 100;
+const verticalLines = 4;
 let cellWidth = heightWidth / verticalLines;
 let horizontalLines = Math.floor(heightWidth / cellWidth);
 let canvasCtx;
@@ -55,11 +94,14 @@ function draw(currentCells) {
   });
 }
 
-function updateAndDraw(current) {
+function updateAndDraw(state) {
+  const { current } = state;
+
+  const currentCopy = [...current];
   let tempRow = [];
   let allCells = [];
 
-  if (!current.length) {
+  if (!currentCopy.length) {
     const initCells = generateInitialCells();
     draw(initCells);
     return initCells;
@@ -67,7 +109,7 @@ function updateAndDraw(current) {
 
   current.forEach((row, rowIndex) => {
     row.forEach((cell, cellIndex) => {
-      tempRow.push(generateNext(rowIndex, cellIndex, row.length, current));
+      tempRow.push(generateNext(rowIndex, cellIndex, row.length, currentCopy));
     });
     allCells.push(tempRow);
     tempRow = [];
@@ -137,19 +179,37 @@ function GameOfLife() {
   useEffect(() => {
     // canvas setup
     canvasCtx = canvasRef.current.getContext("2d");
+    if (state.playing) {
+      const id = setInterval(() => {
+        requestAnimationFrame(() => {
+          dispatch({ type: actions.UPDATE_CELLS });
+        });
+      }, 1000 / 10);
 
-    const id = setInterval(() => {
-      requestAnimationFrame(() => {
-        dispatch({ type: actions.UPDATE_CELLS });
-      });
-    }, 1000 / 10);
+      return () => {
+        clearInterval(id);
+      };
+    }
+  }, [state.playing]);
 
-    return () => {
-      clearInterval(id);
-    };
-  }, []);
-
-  return <canvas ref={canvasRef} width={600} height={600}></canvas>;
+  return (
+    <Container>
+      <StyledCanvas ref={canvasRef} width={600} height={600}></StyledCanvas>
+      <ControlBar>
+        {state.playing ? (
+          <StyledPauseIcon
+            onClick={() => {
+              dispatch({ type: actions.PLAYING, playing: false });
+            }}
+          />
+        ) : (
+          <StyledPlayIcon
+            onClick={() => dispatch({ type: actions.PLAYING, playing: true })}
+          />
+        )}
+      </ControlBar>
+    </Container>
+  );
 }
 
 export default GameOfLife;
@@ -160,15 +220,17 @@ const initialState = {
 };
 
 function reducer(state, action) {
-  const { current, playing } = state;
-
   if (action.type === actions.UPDATE_CELLS) {
     return {
       ...state,
-      current: updateAndDraw([...state.current])
+      current: updateAndDraw(state)
     };
   } else if (action.type === actions.PLAYING) {
-    return state;
+    console.log(state);
+    return {
+      ...state,
+      playing: action.playing
+    };
   } else {
     return state;
   }

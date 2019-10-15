@@ -1,9 +1,5 @@
 import React from "react";
-import GameOfLife from "./GameOfLifeNewer";
-import Animation from "./Animation";
-
-// Style
-import "./App.css";
+import GameOfLife from "./GameOfHooks";
 
 function App() {
   return (
