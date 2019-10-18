@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useReducer } from "react";
+import React, { useEffect, useRef, useReducer, useState } from "react";
 
 // Style
 import styled from "styled-components";
@@ -6,12 +6,11 @@ import { IoIosPlay, IoIosPause } from "react-icons/io";
 
 // 18 = 2px border + 8 + 8 padding
 const Container = styled.div`
-  border: 1px solid black;
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  height: calc(100vh - 18px);
+  height: calc(100vh - 16px);
 `;
 
 const StyledCanvas = styled.canvas`
@@ -38,15 +37,8 @@ const StyledPlayIcon = styled(IoIosPlay)`
   font-size: 28px;
 `;
 
-// TODO:
-// ** make this a github repo **
-// - move logic into separate files
-// - ability to resize
-// - ** play/pause **
-// - (reset? change frame rate?)
-
-const heightWidth = 600;
-const verticalLines = 4;
+let heightWidth = getWidth();
+const verticalLines = 150;
 let cellWidth = heightWidth / verticalLines;
 let horizontalLines = Math.floor(heightWidth / cellWidth);
 let canvasCtx;
@@ -55,6 +47,13 @@ const actions = {
   PLAYING: "PLAYING",
   UPDATE_CELLS: "UPDATE_CELLS"
 };
+
+function getWidth() {
+  const maxCanvasWidth = 600;
+  if (window.innerWidth > maxCanvasWidth) return maxCanvasWidth;
+
+  return window.innerWidth - 8;
+}
 
 function generateInitialCells() {
   let row = [];
@@ -115,7 +114,7 @@ function updateAndDraw(state) {
     tempRow = [];
   });
 
-  canvasCtx.clearRect(0, 0, 600, 600);
+  canvasCtx.clearRect(0, 0, heightWidth, heightWidth);
   draw(allCells);
   return allCells;
 }
@@ -174,6 +173,7 @@ function generateNext(rowIndex, cellIndex, numOfCells, currentCells) {
 
 function GameOfLife() {
   const canvasRef = useRef(null);
+  const [width, setWidth] = useState(getWidth());
   const [state, dispatch] = useReducer(reducer, initialState);
 
   useEffect(() => {
@@ -192,9 +192,28 @@ function GameOfLife() {
     }
   }, [state.playing]);
 
+  useEffect(() => {
+    function handleResize() {
+      setWidth(getWidth());
+
+      heightWidth = getWidth();
+      cellWidth = heightWidth / verticalLines;
+    }
+
+    window.addEventListener("resize", handleResize);
+
+    return () => {
+      window.removeEventListener("resize", handleResize);
+    };
+  }, []);
+
   return (
     <Container>
-      <StyledCanvas ref={canvasRef} width={600} height={600}></StyledCanvas>
+      <StyledCanvas
+        ref={canvasRef}
+        width={heightWidth}
+        height={heightWidth}
+      ></StyledCanvas>
       <ControlBar>
         {state.playing ? (
           <StyledPauseIcon
@@ -226,7 +245,6 @@ function reducer(state, action) {
       current: updateAndDraw(state)
     };
   } else if (action.type === actions.PLAYING) {
-    console.log(state);
     return {
       ...state,
       playing: action.playing
